@@ -93,6 +93,7 @@
     .btn-primary { background:var(--lime); border-color:var(--lime); color:#04140A; box-shadow:0 0 24px -4px rgba(198,255,77,.55); }
     .btn-primary:hover { transform:translateY(-1px); box-shadow:0 0 32px -2px rgba(198,255,77,.75); }
     .btn-primary:active { transform:translateY(1px); }
+    .btn-primary:disabled { opacity:.5; cursor:not-allowed; transform:none; box-shadow:none; }
     .btn-ghost { background:transparent; color:var(--text); }
     .btn-ghost:hover { border-color:var(--lime); color:var(--lime); }
 
@@ -263,7 +264,7 @@
   </div>
   <script>
     // Your deployed Apps Script /exec URL (Deploy > Manage deployments in the Apps Script project).
-    var appUrl = "https://script.google.com/macros/s/AKfycbx9Cn6hfgXs5xxHOZtkiEbMcRhMIsFyRZXSpNA3pLeCQ-CZRd_z9vg2lwn3ZAgNgYAP/exec";
+    var appUrl = "https://script.google.com/macros/s/AKfycbyzk5RTvS32FBV4tv2wBFVkDEsPGuLamtwvCeT6RR7jdo_zfQ6uuRyUh_poIk-Q4G-x/exec";
     document.getElementById("year").textContent = new Date().getFullYear();
     function cleanRoomCode(value) { return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12); }
     function createKaraokeRoom() {
@@ -277,9 +278,30 @@
     function joinKaraokeRoom(event) {
       event.preventDefault();
       var code = cleanRoomCode(document.getElementById("room-code-input").value);
-      if (code.length < 4) { document.getElementById("room-error").textContent = "Enter the room code shown on the karaoke display."; return; }
-      document.getElementById("room-error").textContent = "";
-      window.location.href = appUrl + "?view=mobile&room=" + encodeURIComponent(code);
+      var errorEl = document.getElementById("room-error");
+      var submitBtn = event.target.querySelector('button[type="submit"]');
+
+      if (code.length < 4) { errorEl.textContent = "Enter the room code shown on the karaoke display."; return; }
+      errorEl.textContent = "";
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Checking…";
+
+      fetch(appUrl + "?action=checkroom&room=" + encodeURIComponent(code))
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+          if (res && res.exists) {
+            window.location.href = appUrl + "?view=mobile&room=" + encodeURIComponent(code);
+            return;
+          }
+          errorEl.textContent = "That room doesn't exist — double-check the code on the display.";
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Enter Queue";
+        })
+        .catch(function () {
+          errorEl.textContent = "Couldn't reach the server — check your connection and try again.";
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Enter Queue";
+        });
     }
   </script>
 </body>
